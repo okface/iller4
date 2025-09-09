@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Med MCQ Trainer</title>
+  <meta name="theme-color" content="#6f3cc3" />
+
+  <!-- Cute minimal icon (favicon) -->
+  <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect rx="56" ry="56" width="256" height="256" fill="%236f3cc3"/><g fill="white" transform="translate(28,28)"><path d="M100 52c-8-23-40-28-56-9-12 14-11 35 2 48l54 54 54-54c13-13 14-34 2-48-16-19-48-14-56 9z"/><path d="M38 120h28l10-24 12 36 12-24h28" stroke="white" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>' />
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- YAML parser (for the .data/questions.yaml) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="app-icon" aria-hidden="true"></span>
+      <span class="brand-text">Med MCQ Trainer</span>
+    </div>
+    <button id="btnReset" class="ghost small" title="Reset progress (local only)">Reset</button>
+  </header>
+
+  <!-- HOME / START SCREEN -->
+  <main id="screen-home" class="screen active" aria-live="polite">
+    <section class="card">
+      <h2>Today</h2>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-value" id="stat-today-correct">0</div>
+          <div class="stat-label">Correct</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-today-attempted">0</div>
+          <div class="stat-label">Attempted</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-today-accuracy">0%</div>
+          <div class="stat-label">Accuracy</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Quick Start</h2>
+      <div class="button-row">
+        <button class="primary" data-quick="5">5-question quiz</button>
+        <button class="primary" data-quick="10">10-question quiz</button>
+      </div>
+      <p class="muted">Pulls random questions (images excluded automatically).</p>
+    </section>
+
+    <section class="card">
+      <div class="flex-between">
+        <h2>Focus on weak categories</h2>
+        <button id="btnAutoSelectWeak" class="ghost small">Auto-select bottom 3</button>
+      </div>
+      <div id="categories-container" class="categories-list" aria-live="polite"></div>
+
+      <div class="button-row">
+        <button id="btnStartFocused5" class="secondary">Start 5</button>
+        <button id="btnStartFocused10" class="secondary">Start 10</button>
+      </div>
+      <p class="muted">Tip: Select categories (or use Auto-select). Accuracy is calculated from your past answers on this device.</p>
+    </section>
+
+    <section class="card">
+      <h2>All Questions</h2>
+      <p class="muted" id="questionCount">(loading…)</p>
+      <details>
+        <summary>About</summary>
+        <ul class="about-list">
+          <li>Uses only questions with <code>uses_image: false</code>.</li>
+          <li>Tracks daily progress and category accuracy locally (no cloud sync).</li>
+          <li>Designed for Android browsers in vertical mode.</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <!-- QUIZ SCREEN -->
+  <main id="screen-quiz" class="screen" aria-live="polite">
+    <section class="card">
+      <div class="quiz-top">
+        <button id="btnBackHome" class="ghost small">&larr; Home</button>
+        <div class="quiz-counter"><span id="quizIndex">1</span>/<span id="quizTotal">10</span></div>
+      </div>
+
+      <div class="chip-row">
+        <span id="chipCategory" class="chip">Category</span>
+        <span id="chipNumber" class="chip muted-chip">#</span>
+      </div>
+
+      <h2 id="questionText" class="question-text">Loading…</h2>
+
+      <div id="optionsContainer" class="options"></div>
+
+      <div id="feedback" class="feedback" hidden>
+        <div id="correctness" class="correctness"></div>
+        <div class="more-info">
+          <h3>More information</h3>
+          <div id="moreInfo" class="more-info-body"></div>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="btnNext" class="primary" disabled>Next</button>
+        <button id="btnFinish" class="secondary" hidden>Finish</button>
+      </div>
+    </section>
+
+    <section id="quizSummary" class="card" hidden>
+      <h2>Session summary</h2>
+      <p><strong id="sumScore">0/0 correct</strong></p>
+      <div id="sumCatBreakdown" class="categories-list small"></div>
+      <div class="button-row">
+        <button id="btnDone" class="primary">Back to Home</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span class="muted">&copy; Med MCQ Trainer</span>
+  </footer>
+</body>
+</html>
