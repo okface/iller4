@@ -9,7 +9,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const QUESTIONS_PATH = "./.data/questions.yaml";
+  const QUESTIONS_PATH = "./data/questions.yaml";
   const TZ = "Europe/Stockholm";
   const LS_STATS = "mmcq_stats_v1";         // { days: {YYYY-MM-DD:{attempted,correct}}, categories: {name:{attempted,correct}} }
   const LS_CACHE = "mmcq_cache_v1";         // reserved for future (not used heavily here)
