@@ -13,13 +13,13 @@
   const TZ = "Europe/Stockholm";
   const LS_STATS = "mmcq_stats_v1";         // { days: {YYYY-MM-DD:{attempted,correct}}, categories: {name:{attempted,correct}} }
   const LS_CACHE = "mmcq_cache_v1";         // reserved for future (not used heavily here)
-  const MAX_CATS_AUTO = 3;
+  const MAX_CATS_AUTO = 3; // still pick up to 3 weakest categories for the "weakest" quick start
 
   // ---------- State ----------
   let allQuestions = [];
   let filteredQuestions = [];
   let categories = [];
-  let selectedCategories = new Set();
+  // Manual selection removed – we now only auto-pick weakest when requested
   let session = null;
 
   // ---------- DOM ----------
@@ -46,8 +46,8 @@
   const elTodayAttempted = $("#stat-today-attempted");
   const elTodayAccuracy = $("#stat-today-accuracy");
   const elQuestionCount = $("#questionCount");
-  const elCatsContainer = $("#categories-container");
-  const elBtnAutoSelectWeak = $("#btnAutoSelectWeak");
+  // Removed category list UI elements
+  const elBtnWeak10 = $("#btnWeak10");
 
   // Header buttons
   const elBtnReset = $("#btnReset");
@@ -58,11 +58,9 @@
     const n = parseInt(btn.getAttribute('data-quick'), 10) || 5;
     startQuiz({count: n, categories: null});
   }));
-
-  $("#btnStartFocused5").addEventListener('click', () => startFocused(5));
-  $("#btnStartFocused10").addEventListener('click', () => startFocused(10));
-
-  elBtnAutoSelectWeak.addEventListener('click', autoSelectWeakCategories);
+  if(elBtnWeak10){
+    elBtnWeak10.addEventListener('click', () => startWeakestQuiz(10));
+  }
   elBtnBackHome.addEventListener('click', goHome);
   elBtnReset.addEventListener('click', resetProgress);
 
@@ -90,13 +88,9 @@
       // Derive categories
       categories = Array.from(new Set(filteredQuestions.map(q => q.category))).sort((a,b)=>a.localeCompare(b));
 
-      // Pre-select none on first load
-      selectedCategories = new Set();
-
       // Paint UI
       elQuestionCount.textContent = `${filteredQuestions.length} questions available (images excluded).`;
       renderHomeStats();
-      renderCategoryList();
     }catch(err){
       console.error(err);
       elQuestionCount.textContent = "Couldn't load questions. Ensure ./.data/questions.yaml exists and is valid YAML.";
@@ -114,74 +108,25 @@
     elTodayAccuracy.textContent = `${acc}%`;
   }
 
-  function renderCategoryList(){
+  function pickWeakestCategories(){
+    // Determine up to MAX_CATS_AUTO weakest categories based on accuracy
     const stats = loadStats();
-    elCatsContainer.innerHTML = "";
-
-    // Build list with accuracy info
-    const catRows = categories.map(name => {
+    const rows = categories.map(name => {
       const s = stats.categories[name] || {attempted:0, correct:0};
-      const acc = s.attempted ? Math.round(100 * s.correct / s.attempted) : null; // null shows "—"
-      return {name, attempted: s.attempted, correct: s.correct, accuracy: acc};
+      const attempted = s.attempted;
+      const accuracy = attempted ? (s.correct / attempted) : null; // null = no attempts
+      return {name, attempted, accuracy};
     });
 
-    // Sort ascending by accuracy (nulls last)
-    catRows.sort((a,b) => {
-      if(a.accuracy === null && b.accuracy === null) return a.name.localeCompare(b.name);
-      if(a.accuracy === null) return 1;
-      if(b.accuracy === null) return -1;
-      if(a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
-      return a.name.localeCompare(b.name);
-    });
-
-    for(const row of catRows){
-      const id = `cat_${slug(row.name)}`;
-      const wrap = document.createElement('label');
-      wrap.className = "category";
-      wrap.innerHTML = `
-        <div class="left">
-          <input type="checkbox" id="${id}" ${selectedCategories.has(row.name)?'checked':''} />
-          <div>
-            <div class="cat-name">${escapeHTML(row.name)}</div>
-            <div class="cat-meta">
-              ${row.attempted ? `${row.accuracy}% · ${row.correct}/${row.attempted} correct` : "— no attempts yet"}
-            </div>
-          </div>
-        </div>
-      `;
-
-      wrap.querySelector('input').addEventListener('change', (e) => {
-        if(e.target.checked) selectedCategories.add(row.name);
-        else selectedCategories.delete(row.name);
-      });
-
-      elCatsContainer.appendChild(wrap);
-    }
+    const attemptedRows = rows.filter(r=>r.attempted>0).sort((a,b)=>a.accuracy-b.accuracy);
+    const untried = rows.filter(r=>r.attempted===0).sort((a,b)=>a.name.localeCompare(b.name));
+    const pick = [...attemptedRows.slice(0, MAX_CATS_AUTO), ...untried].slice(0, MAX_CATS_AUTO);
+    return new Set(pick.map(p=>p.name));
   }
 
-  function autoSelectWeakCategories(){
-    // Recompute sorted by lowest accuracy among attempted; then add unattempted if needed
-    const stats = loadStats();
-    const withStats = categories.map(name => {
-      const s = stats.categories[name] || {attempted:0, correct:0};
-      const accuracy = s.attempted ? (s.correct / s.attempted) : null;
-      return {name, attempted: s.attempted, accuracy};
-    });
-
-    const attempted = withStats.filter(c => c.attempted>0).sort((a,b)=>a.accuracy-b.accuracy);
-    const notTried = withStats.filter(c => c.attempted===0).sort((a,b)=>a.name.localeCompare(b.name));
-
-    const pick = [...attempted.slice(0, MAX_CATS_AUTO), ...notTried].slice(0, MAX_CATS_AUTO);
-    selectedCategories = new Set(pick.map(p=>p.name));
-    renderCategoryList();
-  }
-
-  function startFocused(count){
-    if(selectedCategories.size === 0){
-      // If nothing selected, fallback to auto-select
-      autoSelectWeakCategories();
-    }
-    startQuiz({count, categories: new Set(selectedCategories)});
+  function startWeakestQuiz(count){
+    const picked = pickWeakestCategories();
+    startQuiz({count, categories: picked});
   }
 
   // ---------- Quiz Flow ----------
@@ -334,7 +279,6 @@
     show(elOptions);
     elQuizSummary.hidden = true;
     renderHomeStats();
-    renderCategoryList();
   }
 
   // ---------- Stats ----------
@@ -375,7 +319,6 @@
     if(confirm("Reset all local progress and stats on this device?")){
       localStorage.removeItem(LS_STATS);
       renderHomeStats();
-      renderCategoryList();
       alert("Progress reset.");
     }
   }
