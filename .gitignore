@@ -1,0 +1,6 @@
+local_cleanup_questions.py
+data/questions.cleaned.yaml
+data/questions.cleaned.hashes.json
+data/questions.cleaned.yaml.tmp
+__pycache__/
+*.pyc
